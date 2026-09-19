@@ -171,24 +171,25 @@ spring-boot-3-jwt-security/
 
 | Piece | Version / choice |
 |---|---|
-| Language | Java 17 (`java.version` in `pom.xml`) |
-| Runtime used here | **JDK 17** |
-| Spring Boot | 3.1.4 |
+| Language | Java 21 (`java.version` in `pom.xml`) |
+| Runtime used here | **JDK 21+** (JDK 25 is fine) |
+| Spring Boot | 4.1.1 |
 | Security | `spring-boot-starter-security` + method security |
-| JWT | `io.jsonwebtoken` 0.11.5 (HS256) |
+| JWT | `io.jsonwebtoken` 0.13.0 (HS256) |
 | Passwords | BCrypt |
-| Persistence | Spring Data JPA + MySQL 8 |
-| API docs | springdoc-openapi 2.1.0 (Swagger UI) |
+| Persistence | Spring Data JPA + MySQL 8 (H2 in tests) |
+| API docs | springdoc-openapi 3.1.1 (Swagger UI) |
+| Errors | RFC 7807 `ProblemDetail` |
 | Build | Maven 3.6+ (wrapper included) |
-| Tests | JUnit 5 + `spring-boot-starter-test` |
+| Tests | JUnit 5 + MockMvc + Mockito + AssertJ |
 
-Do **not** run this app on the machine’s default JDK 25. Spring Boot 3.1.4 is built for Java 17.
+Compile with JDK 21 or newer. Spring Boot 4.1.1 supports Java 17–26; this project targets **Java 21**.
 
 ---
 
 ## Prerequisites
 
-- JDK 17 on the `PATH` (or `JAVA_HOME` pointed at it)
+- JDK 21+ on the `PATH` (or `JAVA_HOME` pointed at it)
 - Maven 3.6+ (or `./mvnw`)
 - MySQL 8+ listening on `localhost:3306`
 - A database named **`jwt_security`**
@@ -197,7 +198,7 @@ Do **not** run this app on the machine’s default JDK 25. Spring Boot 3.1.4 is 
 On macOS:
 
 ```bash
-export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+export JAVA_HOME=$(/usr/libexec/java_home -v 25)
 export PATH="$JAVA_HOME/bin:$PATH"
 java -version
 ```
@@ -208,14 +209,21 @@ Create the schema (once):
 CREATE DATABASE jwt_security;
 ```
 
-Then put a MySQL user that actually works into `src/main/resources/application.yml`:
+Override the datasource if your local MySQL is not `root`/`root`:
+
+```bash
+export SPRING_DATASOURCE_USERNAME=root
+export SPRING_DATASOURCE_PASSWORD=your-password
+```
+
+`application.yml` defaults:
 
 ```yaml
 spring:
   datasource:
     url: jdbc:mysql://localhost:3306/jwt_security
-    username: <your-mysql-user>
-    password: <your-mysql-password>
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
 ```
 
 `ddl-auto` is `create-drop`, so tables are rebuilt on every process start. Users and tokens from the last run are gone.
@@ -233,7 +241,7 @@ Start **MySQL first**, then the app. The filter has nowhere to look up users if 
 From the repository root:
 
 ```bash
-export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+export JAVA_HOME=$(/usr/libexec/java_home -v 25)
 export PATH="$JAVA_HOME/bin:$PATH"
 
 ./mvnw spring-boot:run
@@ -447,7 +455,7 @@ Any authenticated user.
 
 | | |
 |---|---|
-| **Create** | `POST /api/v1/books` → `202 Accepted` |
+| **Create** | `POST /api/v1/books` → `201 Created` |
 | **List** | `GET /api/v1/books` → `200 OK` |
 
 ```bash
@@ -480,7 +488,24 @@ curl -s -X PATCH http://localhost:8001/api/v1/users \
   }'
 ```
 
-Then log in again with `newPassword`.
+Then log in again with `newPassword`. Success is **204 No Content**.
+
+---
+
+## Error model
+
+Failures return RFC 7807 `ProblemDetail` JSON (`application/problem+json` for filter-level 401/403).
+
+| Situation | Status | `code` |
+|---|---|---|
+| Bean validation (`@Valid`) | 400 | `VALIDATION_FAILED` |
+| Wrong current password / confirmation | 400 | `INVALID_REQUEST` |
+| Missing or invalid JWT | 401 | `UNAUTHORIZED` / `INVALID_TOKEN` |
+| Bad email or password | 401 | `BAD_CREDENTIALS` |
+| Authenticated but wrong role | 403 | `ACCESS_DENIED` |
+| Duplicate email | 409 | `DUPLICATE_RESOURCE` |
+| Unknown user or book id | 404 | `RESOURCE_NOT_FOUND` |
+| Anything else | 500 | `INTERNAL_ERROR` (no stack in the body) |
 
 ---
 
@@ -493,8 +518,8 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/jwt_security
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: <your-mysql-user>
-    password: <your-mysql-password>
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -523,16 +548,26 @@ Everything else needs a valid access token.
 
 ## Tests
 
-`src/test/java/com/alibou/security/SecurityApplicationTests` only checks that the Spring context loads. It still needs a reachable MySQL and the `jwt_security` database.
+Tests run on an in-memory H2 database (`src/test/resources/application.yml`). They do **not** need MySQL.
+
+| Area | Class | What it covers |
+|---|---|---|
+| JWT | `JwtServiceTest` | subject, expiry, wrong user, malformed token |
+| Auth service | `AuthenticationServiceTest` | register, duplicate email, login, refresh |
+| Users | `UserServiceTest` | change-password success and validation |
+| Books | `BookServiceTest` | create, missing id |
+| Errors | `GlobalExceptionHandlerTest` | 409 / 400 / 401 / 500 ProblemDetail |
+| Filter | `JwtAuthenticationFilterTest` | valid, revoked, malformed token |
+| HTTP | `AuthenticationIntegrationTest` | register, login, refresh rotation, logout |
+| HTTP | `AuthorizationIntegrationTest` | USER / MANAGER / ADMIN doors |
+| HTTP | `BookIntegrationTest` | create, update audit, 404, change password |
 
 ```bash
-export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+export JAVA_HOME=$(/usr/libexec/java_home -v 25)
 export PATH="$JAVA_HOME/bin:$PATH"
 
 ./mvnw test
 ```
-
-There are **no** automated tests for register, login, roles, or token revocation. Exercise those with Swagger, curl, or the IntelliJ files under `http/` (change `localhost:8080` to `localhost:8001`).
 
 Suggested manual pass:
 
@@ -550,7 +585,7 @@ Suggested manual pass:
 |---|---|---|
 | `Access denied for user 'root'@'localhost'` | `application.yml` password does not match MySQL | Set a user/password that works; create `jwt_security` |
 | `Communications link failure` | MySQL not running | `brew services list` / start MySQL on `3306` |
-| App fails on JDK 22/25 | Spring Boot 3.1.4 | `export JAVA_HOME=$(/usr/libexec/java_home -v 17)` |
+| App fails on JDK 17 only | Project targets Java 21 | Use JDK 21+ (`/usr/libexec/java_home -v 25`) |
 | Connection refused on `:8080` | App is on **8001** | Use `http://localhost:8001` |
 | Swagger “server” still says 8080 | `OpenApiConfig` | Call 8001 anyway |
 | `403` on demo with a token | Token revoked, expired, or missing `Bearer ` | Login again; header must be `Authorization: Bearer …` |
@@ -560,9 +595,9 @@ Suggested manual pass:
 
 ---
 
-## Java 17 note
+## Java 21 note
 
-`pom.xml` sets `<java.version>17</java.version>`. This machine may default to a newer JDK. Point Maven at 17 before `spring-boot:run` or `test`, or pick JDK 17 in the IntelliJ run configuration.
+`pom.xml` sets `<java.version>21</java.version>`. Compile with JDK 21 or newer (JDK 25 is the current LTS on this machine). Point the IntelliJ run configuration at that JDK.
 
 ---
 

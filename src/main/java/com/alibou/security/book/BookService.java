@@ -1,7 +1,9 @@
 package com.alibou.security.book;
 
+import com.alibou.security.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -11,15 +13,22 @@ public class BookService {
 
     private final BookRepository repository;
 
-    public void save(BookRequest request) {
-        var book = Book.builder()
-                .id(request.getId())
-                .author(request.getAuthor())
-                .isbn(request.getIsbn())
-                .build();
-        repository.save(book);
+    @Transactional
+    public Book save(BookRequest request) {
+        if (request.id() == null) {
+            return repository.save(Book.builder()
+                    .author(request.author())
+                    .isbn(request.isbn())
+                    .build());
+        }
+        var book = repository.findById(request.id())
+                .orElseThrow(() -> new ResourceNotFoundException("Book", String.valueOf(request.id())));
+        book.setAuthor(request.author());
+        book.setIsbn(request.isbn());
+        return repository.save(book);
     }
 
+    @Transactional(readOnly = true)
     public List<Book> findAll() {
         return repository.findAll();
     }

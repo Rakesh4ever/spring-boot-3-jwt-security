@@ -1,15 +1,12 @@
 package com.alibou.security.book;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import jakarta.validation.constraints.NotBlank;
 
-@Getter
-@Setter
-@Builder
-public class BookRequest {
-
-    private Integer id;
-    private String author;
-    private String isbn;
+public record BookRequest(
+        Integer id,
+        @NotBlank(message = "author is required")
+        String author,
+        @NotBlank(message = "isbn is required")
+        String isbn
+) {
 }

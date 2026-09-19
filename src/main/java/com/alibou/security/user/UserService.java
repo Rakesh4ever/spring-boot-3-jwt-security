@@ -1,9 +1,12 @@
 package com.alibou.security.user;
 
+import com.alibou.security.exception.InvalidRequestException;
+import com.alibou.security.token.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
 
@@ -13,23 +16,22 @@ public class UserService {
 
     private final PasswordEncoder passwordEncoder;
     private final UserRepository repository;
+    private final TokenService tokenService;
+
+    @Transactional
     public void changePassword(ChangePasswordRequest request, Principal connectedUser) {
-
         var user = (User) ((UsernamePasswordAuthenticationToken) connectedUser).getPrincipal();
-
-        // check if the current password is correct
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            throw new IllegalStateException("Wrong password");
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            throw new InvalidRequestException("Current password is incorrect");
         }
-        // check if the two new passwords are the same
-        if (!request.getNewPassword().equals(request.getConfirmationPassword())) {
-            throw new IllegalStateException("Password are not the same");
+        if (!request.newPassword().equals(request.confirmationPassword())) {
+            throw new InvalidRequestException("New password and confirmation do not match");
         }
-
-        // update the password
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-
-        // save the new password
+        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+            throw new InvalidRequestException("New password must be different from the current password");
+        }
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
         repository.save(user);
+        tokenService.revokeAllUserTokens(user);
     }
 }

@@ -1,6 +1,8 @@
 package com.alibou.security.book;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,11 +20,9 @@ public class BookController {
     private final BookService service;
 
     @PostMapping
-    public ResponseEntity<?> save(
-            @RequestBody BookRequest request
-    ) {
-        service.save(request);
-        return ResponseEntity.accepted().build();
+    public ResponseEntity<Book> save(@Valid @RequestBody BookRequest request) {
+        HttpStatus status = request.id() == null ? HttpStatus.CREATED : HttpStatus.OK;
+        return ResponseEntity.status(status).body(service.save(request));
     }
 
     @GetMapping

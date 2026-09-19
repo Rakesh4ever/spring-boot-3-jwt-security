@@ -1,15 +1,15 @@
 package com.alibou.security.user;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
-@Getter
-@Setter
-@Builder
-public class ChangePasswordRequest {
-
-    private String currentPassword;
-    private String newPassword;
-    private String confirmationPassword;
+public record ChangePasswordRequest(
+        @NotBlank(message = "currentPassword is required")
+        String currentPassword,
+        @NotBlank(message = "newPassword is required")
+        @Size(min = 8, max = 72, message = "newPassword must be between 8 and 72 characters")
+        String newPassword,
+        @NotBlank(message = "confirmationPassword is required")
+        String confirmationPassword
+) {
 }

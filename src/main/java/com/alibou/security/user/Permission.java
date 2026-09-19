@@ -1,9 +1,5 @@
 package com.alibou.security.user;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-
-@RequiredArgsConstructor
 public enum Permission {
 
     ADMIN_READ("admin:read"),
@@ -13,10 +9,15 @@ public enum Permission {
     MANAGER_READ("management:read"),
     MANAGER_UPDATE("management:update"),
     MANAGER_CREATE("management:create"),
-    MANAGER_DELETE("management:delete")
+    MANAGER_DELETE("management:delete");
 
-    ;
-
-    @Getter
     private final String permission;
+
+    Permission(String permission) {
+        this.permission = permission;
+    }
+
+    public String getPermission() {
+        return permission;
+    }
 }

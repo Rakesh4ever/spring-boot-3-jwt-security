@@ -1,25 +1,27 @@
 spring:
+  application:
+    name: jwt-security
   datasource:
     url: jdbc:mysql://localhost:3306/jwt_security
     driver-class-name: com.mysql.cj.jdbc.Driver
-    username: root
-    password: root
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
   jpa:
     hibernate:
-      ddl-auto: 'create-drop'
+      ddl-auto: create-drop
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-    database: MYSQL
-    database-platform: org.hibernate.dialect.MySQL8Dialect
+    open-in-view: false
 
 server:
   port: 8001
+
 application:
   security:
     jwt:
       secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-      expiration: 86400000 # a day
+      expiration: 86400000
       refresh-token:
-        expiration: 604800000 # 7 days
+        expiration: 604800000

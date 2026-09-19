@@ -17,8 +17,8 @@ import io.swagger.v3.oas.annotations.servers.Server;
                         email = "contact@aliboucoding.com",
                         url = "https://aliboucoding.com/course"
                 ),
-                description = "OpenApi documentation for Spring Security",
-                title = "OpenApi specification - Alibou",
+                description = "OpenAPI documentation for Spring Security JWT",
+                title = "OpenAPI specification - Alibou",
                 version = "1.0",
                 license = @License(
                         name = "Licence name",
@@ -29,17 +29,11 @@ import io.swagger.v3.oas.annotations.servers.Server;
         servers = {
                 @Server(
                         description = "Local ENV",
-                        url = "http://localhost:8080"
-                ),
-                @Server(
-                        description = "PROD ENV",
-                        url = "https://aliboucoding.com/course"
+                        url = "http://localhost:8001"
                 )
         },
         security = {
-                @SecurityRequirement(
-                        name = "bearerAuth"
-                )
+                @SecurityRequirement(name = "bearerAuth")
         }
 )
 @SecurityScheme(

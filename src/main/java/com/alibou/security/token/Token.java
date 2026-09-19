@@ -12,31 +12,38 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Entity
 public class Token {
 
-  @Id
-  @GeneratedValue
-  public Integer id;
+    @Id
+    @GeneratedValue
+    @EqualsAndHashCode.Include
+    private Integer id;
 
-  @Column(unique = true)
-  public String token;
+    @Column(unique = true, nullable = false, length = 512)
+    private String token;
 
-  @Enumerated(EnumType.STRING)
-  public TokenType tokenType = TokenType.BEARER;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private TokenType tokenType = TokenType.ACCESS;
 
-  public boolean revoked;
+    private boolean revoked;
 
-  public boolean expired;
+    private boolean expired;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "user_id")
-  public User user;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 }
